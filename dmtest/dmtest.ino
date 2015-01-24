@@ -1,5 +1,9 @@
+// -*- mode: c++ -*-
+
 #include <SPI.h>
 #include "Max7219.h"
+#include "Dtmf8870.h"
+#include "Lm35.h"
 #include "Font5x7.h"
 
 #define NUM_MODULES 6
@@ -8,6 +12,7 @@
 #define MAX_PAN ((BUF_PAGES) * NUM_COLS)
 
 Max7219 m(NUM_MODULES);
+
 byte buf[NUM_COLS];
 byte big_buf[NUM_COLS * (BUF_PAGES+1)];
 
@@ -19,12 +24,14 @@ void write_to_scroller (char *str) {
 
 int pan_pos = 0;
 
-void scroll() {
+void scroll(int _delay) {
   m.blit(big_buf, pan_pos);
 
   pan_pos += 1;
   if (pan_pos > MAX_PAN)
     pan_pos = 0;
+
+  delay(_delay);
 }
 
 void clear () {
@@ -33,113 +40,44 @@ void clear () {
   }
 }
 
-/*
- * Caller ID (DTMF) section.
- */
-#define CLI_CLK  2
-#define CLI_D0   6
-#define CLI_D1   5
-#define CLI_D2   4
-#define CLI_D3   3
-
-void setup_read_cli () {
-  pinMode(CLI_CLK, INPUT);
-  pinMode(CLI_D0, INPUT);
-  pinMode(CLI_D1, INPUT);
-  pinMode(CLI_D2, INPUT);
-  pinMode(CLI_D3, INPUT);
-}
-
-int cli_clk = 0;
-int cli_loaded = 0;
-int cli_value = 0;
-int cli_last_digit_time = 0;
-
-#define MAX_CLI_DIGITS 16
-
-char number[MAX_CLI_DIGITS +1] = "";
-byte number_ptr = 0;
-boolean number_valid = false;
-
-void debug_str(char *str) {
+void display_str(char *str) {
     memset(buf, 0, NUM_COLS);
     write_string(buf, NUM_COLS, str, 0);
     m.blit(buf, 0);
 }
 
-void debug_numb(char *fmt, int a, int b, char c)
-{
-  char sbuf[512];
-  sprintf(sbuf, fmt, a, b, c);
-  debug_str(sbuf);
-}
-
-char dtmf_xlat[17] = {'D', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*', '#', 'A', 'B', 'C'};
-
-void loop_read_cli () {
-  static int clk_counter = 0;
-
-  int clk = digitalRead(CLI_CLK);
-  int old_clk = cli_clk;
-  cli_clk = clk;
-
-  if (clk && !old_clk) {
-    clk_counter ++;
-    if (clk_counter > 999)
-        clk_counter =0;
-
-    cli_value = digitalRead(CLI_D0) |
-      (digitalRead(CLI_D1) << 1) |
-      (digitalRead(CLI_D2) << 2) |
-      (digitalRead(CLI_D3) << 3);
-
-    debug_numb("%03d: %01d '%c'", clk_counter, cli_value, dtmf_xlat[cli_value]);
-
-    cli_last_digit_time = (int)(millis()/1000);
-    if (number_ptr < MAX_CLI_DIGITS) {
-      number_valid = true;
-      number[number_ptr] = dtmf_xlat[cli_value];
-      number[number_ptr+1] = '\0';
-      number_ptr ++;
-    }
-  }
-
-  if (number_valid &&  (((int)(millis()/1000)) - cli_last_digit_time) > 2) {
-    debug_str(number);
-    number[0] = '\0';
-    number_ptr = 0;
-    number_valid = false;
-  }
-}
-
-/* END CallerID */
-// Uncomment the #define CLI_WIP to enable.
-// #define CLI_WIP
-
-void setup () {
-  m.init();
-  //m.shutdown();
-  setup_Font5x7();
-  write_to_scroller("AAPPI Rulez. Aappi's rules.");
-
-#ifdef CLI_WIP
-  setup_read_cli();
-  memset(buf, 0, NUM_COLS);
-  debug_str("CLI_TEST");
-#endif
+void loop_Temperature () {
+  char sbuf[256];
+  Lm35_readAccumulate(28, 70);
+  Lm35_print(sbuf);
+  display_str(sbuf);
+  delay(40);
 }
 
 byte loop_clock = 0;
-
-void loop () {
-#ifdef CLI_WIP
-  loop_read_cli();
+void loop_Dtmf () {
+  Dtmf8870_loop_read();
   loop_clock = loop_clock + 1;
   delay(1);
-#else
-  scroll();
-  delay(30);
-#endif
+}
+
+void setup () {
+  m.init();
+  setup_Font5x7();
+
+  write_to_scroller("AAPPI Rulez. Aappi's rules.");
+
+  Lm35_setup();
+
+  // Dtmf8870_setup();
+  // memset(buf, 0, NUM_COLS);
+  // display_str("CLI_TEST");
+}
+
+void loop () {
+  // loop_Dtmf();
+  // scroll (30);
+  loop_Temperature();
 }
 
 
