@@ -20,6 +20,12 @@ void Max7219::init()
      send(cmd_intensity, 0x00);
 }
 
+void Max7219::shutdown()
+{
+    send(cmd_shutdown, 0x00);
+    SPI.end();
+}
+
 /* Repeats the command for all the modules */
 void Max7219::send(byte cmd, byte val)
 {

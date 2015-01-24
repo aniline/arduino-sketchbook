@@ -23,6 +23,7 @@ class Max7219
     void send(byte cmd, byte val);
     void setcol(byte col, byte val);
     void blit(byte *frame_buffer, int pan_offs);
+    void shutdown();
 };
 
 #endif
