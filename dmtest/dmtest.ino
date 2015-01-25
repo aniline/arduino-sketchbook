@@ -90,7 +90,7 @@ void loop_Dtmf () {
   d.loop();
 
   if ((display_master == DISP_CLI) && ((d.counter_s() - number_time) > 6)) {
-    display_str_scroller("Done.");
+    ;
   }
 }
 
@@ -109,7 +109,7 @@ void dtmf_handler(int state, char c, char * str) {
     number_time = d.counter_s();
     display_master = DISP_CLI;
     snprintf(sbuf, MAX_CLI_DIGITS, "%s", str);
-    display_str(sbuf);
+    display_str_scroller(sbuf);
     break;
   default:
     ;
