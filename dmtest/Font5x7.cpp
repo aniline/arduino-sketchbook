@@ -1,9 +1,10 @@
 #include "Arduino.h"
 #include "Font5x7.h"
+#include <avr/pgmspace.h>
 
 #define FONT_LEN 480
 
-byte Font5x7[FONT_LEN] = {
+const byte Font5x7[FONT_LEN] PROGMEM = {
    0x00, 0x01, 0x00, 0x3c, 0x12, 0x12, 0x3d, 0x00, 0x3e, 0x2a, 0x2a, 0x1d,
    0x00, 0x1c, 0x22, 0x22, 0x23, 0x00, 0x3e, 0x22, 0x22, 0x1d, 0x00, 0x3e,
    0x2a, 0x2a, 0x23, 0x00, 0x3e, 0x0a, 0x0a, 0x03, 0x00, 0x1c, 0x22, 0x2a,
@@ -45,54 +46,48 @@ byte Font5x7[FONT_LEN] = {
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
-char Font5x7_chars[92] = " ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789?!+@\"'#*/\\.,-()[]{}=$_|:;^%&";
-int Font5x7_idx[256];
-int Font5x7_len[256];
+typedef struct {
+     unsigned int offset:12;
+     unsigned int len:4;
+} t_index;
+
+const t_index Font5x7_idx[128] PROGMEM = {
+     {   0, 2 }, {   0, 2 }, {   0, 2 }, {   0, 2 }, {   0, 2 }, {   0, 2 }, {   0, 2 }, {   0, 2 },
+     {   0, 2 }, {   0, 2 }, {   0, 2 }, {   0, 2 }, {   0, 2 }, {   0, 2 }, {   0, 2 }, {   0, 2 },
+     {   0, 2 }, {   0, 2 }, {   0, 2 }, {   0, 2 }, {   0, 2 }, {   0, 2 }, {   0, 2 }, {   0, 2 },
+     {   0, 2 }, {   0, 2 }, {   0, 2 }, {   0, 2 }, {   0, 2 }, {   0, 2 }, {   0, 2 }, {   0, 2 },
+     {   0, 2 }, { 290, 2 }, { 303, 4 }, { 309, 6 }, { 363, 6 }, { 387, 5 }, { 392, 6 }, { 307, 2 },
+     { 338, 3 }, { 341, 3 }, { 315, 6 }, { 292, 6 }, { 331, 2 }, { 333, 5 }, { 329, 2 }, { 321, 4 },
+     { 237, 5 }, { 242, 3 }, { 245, 5 }, { 250, 5 }, { 255, 5 }, { 260, 5 }, { 265, 5 }, { 270, 5 },
+     { 275, 5 }, { 280, 5 }, { 377, 2 }, { 379, 2 }, {   0, 2 }, { 358, 5 }, {   0, 2 }, { 285, 5 },
+     { 298, 5 }, {   2, 5 }, {   7, 5 }, {  12, 5 }, {  17, 5 }, {  22, 5 }, {  27, 5 }, {  32, 5 },
+     {  37, 5 }, {  42, 4 }, {  46, 4 }, {  50, 5 }, {  55, 5 }, {  60, 6 }, {  66, 5 }, {  71, 5 },
+     {  76, 5 }, {  81, 5 }, {  86, 5 }, {  91, 5 }, {  96, 4 }, { 100, 5 }, { 105, 5 }, { 110, 6 },
+     { 116, 6 }, { 122, 6 }, { 128, 4 }, { 344, 3 }, { 325, 4 }, { 347, 3 }, { 381, 6 }, { 369, 6 },
+     {   0, 2 }, { 132, 5 }, { 137, 4 }, { 141, 4 }, { 145, 4 }, { 149, 4 }, { 153, 4 }, { 157, 4 },
+     { 161, 4 }, { 165, 2 }, { 167, 3 }, { 170, 4 }, { 174, 2 }, { 176, 6 }, { 182, 4 }, { 186, 4 },
+     { 190, 4 }, { 194, 4 }, { 198, 4 }, { 202, 4 }, { 206, 4 }, { 210, 5 }, { 215, 4 }, { 219, 6 },
+     { 225, 4 }, { 229, 4 }, { 233, 4 }, { 350, 4 }, { 375, 2 }, { 354, 4 }, {   0, 2 }, {   0, 2 },
+};
 
 int setup_Font5x7 () {
-     char cur_char;
-     int char_idx = 0;
-     int col_idx = 0;
-     int char_Font5x7_idx = 0;
-     int char_Font5x7_len = 0;
-
-     for (int i = 0; i<256; i++) {
-         Font5x7_idx[i] = 0;
-         Font5x7_len[i] = 2; /* Safe (space) value */
-     }
-
-     cur_char = Font5x7_chars[char_idx];
-     for (; col_idx < FONT_LEN; col_idx ++) {
-	  char v = Font5x7[col_idx];
-	  if (v & 1) {
-	       char_Font5x7_len = (col_idx - char_Font5x7_idx) + 1;
-	       Font5x7_idx[(int)cur_char] = char_Font5x7_idx;
-	       Font5x7_len[(int)cur_char] = char_Font5x7_len;
-
-	       printf("Processed %c, idx = %d, len = %d\n", cur_char,
-		      char_Font5x7_idx, char_Font5x7_len);
-	       char_idx ++;
-	       char_Font5x7_idx = col_idx + 1;
-	       cur_char = Font5x7_chars[char_idx];
-	  }
-     }
      return 0;
 }
 
 int write_letter(byte *buffer, int buffer_size, char v, int offs) {
   int rc = 0;
-
-  /* TODO: Avoid misuse */
+  unsigned int v_idx_val = pgm_read_word_near(Font5x7_idx+v);
+  t_index v_idx = *((t_index*)&v_idx_val);
   if (offs <= 0) memset(buffer, 0, buffer_size);
 
-  for (int i=0; i<Font5x7_len[v]; i++) {
+  for (int i=0; i<v_idx.len; i++) {
     if ((offs + i)>=buffer_size) {
       return -1;
     }
-    buffer[offs + i] = 0xFE & (Font5x7[Font5x7_idx[v]+i]);
+    buffer[offs + i] = 0xFE & (pgm_read_byte_near(Font5x7+v_idx.offset+i));
   }
 
-  return Font5x7_len[v];
+  return v_idx.len;
 }
 
 int write_string(byte *buffer, int buffer_size, char *str, int blit_offs) {

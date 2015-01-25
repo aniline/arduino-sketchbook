@@ -10,7 +10,7 @@
 #define CLI_D2   4
 #define CLI_D3   3
 
-char dtmf_xlat[17] = {
+const char dtmf_xlat[17] PROGMEM = {
   'D', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*', '#', 'A', 'B', 'C'};
 
 Dtmf8870::Dtmf8870() {
@@ -23,7 +23,7 @@ Dtmf8870::Dtmf8870() {
   time_counter_ams = 0;
   time_counter_s = 0;
 }
-void display_str(char *str);
+
 void Dtmf8870::setup (int number_timeout, Dtmf8870_handler handler) {
   cli_number_timeout = (unsigned long)(number_timeout/1000);
   this->handler = handler;
@@ -36,7 +36,6 @@ void Dtmf8870::setup (int number_timeout, Dtmf8870_handler handler) {
 
   this->handler(DTMF_IDLE, '\0', "");
 }
-
 
 void Dtmf8870::loop () {
   int clk = digitalRead(CLI_CLK);
@@ -60,9 +59,10 @@ void Dtmf8870::loop () {
 
     cli_last_digit_time = time_counter_s;
     if (number_ptr < MAX_CLI_DIGITS) {
-      handler(DTMF_TONE_READ, dtmf_xlat[cli_value], "");
+      char xc = pgm_read_byte_near(dtmf_xlat + cli_value);
+      handler(DTMF_TONE_READ, xc, "");
       number_valid = true;
-      number[number_ptr] = dtmf_xlat[cli_value];
+      number[number_ptr] = xc;
       number[number_ptr+1] = '\0';
       number_ptr ++;
     }

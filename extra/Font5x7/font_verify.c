@@ -46,8 +46,13 @@ unsigned char font[FONT_LEN] = {
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
 char chars[92] = " ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789?!+@\"'#*/\\.,-()[]{}=$_|:;^%&";
-int idx[256] = {};
-int len[256] = {};
+
+typedef struct {
+     unsigned short offset:12;
+     unsigned short len:4;
+} t_index;
+
+t_index idx[256];
 
 int mk_idx () {
      char cur_char;
@@ -57,24 +62,39 @@ int mk_idx () {
      int char_font_len = 0;
      int i;
      for (i = 0; i<256; i++) {
-	  idx[i] = 0;
-	  len[i] = 2;
+	  idx[i].offset = 0;
+	  idx[i].len = 2;
      }
 
      cur_char = chars[char_idx];
+
      for (; col_idx < FONT_LEN; col_idx ++) {
 	  char v = font[col_idx];
 	  if (v & 1) {
 	       char_font_len = (col_idx - char_font_idx) + 1;
-	       idx[(int)cur_char] = char_font_idx;
-	       len[(int)cur_char] = char_font_len;
-	       printf("Processed %c, idx = %d, len = %d\n", cur_char,
-		      char_font_idx, char_font_len);
+	       idx[(int)cur_char].offset = char_font_idx;
+	       idx[(int)cur_char].len = char_font_len;
+
 	       char_idx ++;
 	       char_font_idx = col_idx + 1;
 	       cur_char = chars[char_idx];
 	  }
      }
+
+     printf("typedef struct {\n"
+	    "      unsigned short offset:12;\n"
+	    "      unsigned short len:4;\n"
+	    "} t_index;\n\n"
+	    "t_index idx[256] = {");
+
+     for (i = 0; i<256; i++) {
+	  if ((i%8) == 0) {
+	       printf("\n");
+	  }
+	  printf("{ %3d, %d }, ", idx[i].offset, idx[i].len);
+     }
+
+     printf("\n};\n");
      return 0;
 }
 
@@ -83,8 +103,8 @@ void blit_char(char v) {
      int i, j;
      memset(b, '\0', 65);
      memset(b, '.', 64);
-     for (i=0; i<len[v]; i++) {
-	  unsigned char bv = 0xFE & font[idx[v]+i];
+     for (i=0; i<idx[v].len; i++) {
+	  unsigned char bv = 0xFE & font[idx[v].offset+i];
 	  printf("Byte val = %02x\n", bv);
 	  for (j=0; j<8; j++) {
 	       if (bv & (1<<j)) {

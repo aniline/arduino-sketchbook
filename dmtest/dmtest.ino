@@ -69,17 +69,16 @@ enum {
 } 
 display_master = DISP_TEMP;
 
+unsigned int t_counter = 0;
 void loop_Temperature () {
-  static int clk = 0;
-
-  Lm35_readAccumulate(28, 70);
+  Lm35_readAccumulate(8, 70);
   if (display_master == DISP_TEMP) {
-    int delta = (millis()/1000) - clk;
+    int delta = d.counter_s() - t_counter;
     if (delta > 2) {
       char sbuf[16];
       Lm35_print(sbuf, 16);
       display_str(sbuf);
-      clk = millis();
+      t_counter = d.counter_s();
     }
   }
 }
@@ -88,9 +87,8 @@ void loop_Temperature () {
 int number_time = 0;
 void loop_Dtmf () {
   d.loop();
-
   if ((display_master == DISP_CLI) && ((d.counter_s() - number_time) > 6)) {
-    ;
+    display_master = DISP_TEMP;
   }
 }
 
@@ -127,14 +125,14 @@ void setup () {
   memset(big_buf, 0, (NUM_COLS*(BUF_PAGES+1)));
   m.blit(buf, 0);
 
-  display_str("Starting.");
+  display_str("Starting");
 }
 
 void loop () {
   loop_Dtmf();
-  // loop_Temperature();
+  loop_Temperature();
   scroll(30);
-  delay(1);
+  delayMicroseconds(500);
 }
 
 
