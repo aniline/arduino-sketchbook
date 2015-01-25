@@ -10,57 +10,57 @@
 #define CLI_D2   4
 #define CLI_D3   3
 
-void Dtmf8870_setup () {
+char dtmf_xlat[17] = {
+  'D', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*', '#', 'A', 'B', 'C'};
+
+Dtmf8870::Dtmf8870() {
+  cli_clk = 0;
+  cli_loaded = 0;
+  cli_last_digit_time = 0;
+  memset(number, 0, MAX_CLI_DIGITS+1);
+  number_ptr = 0;
+  number_valid = false;
+  time_counter_ams = 0;
+  time_counter_s = 0;
+}
+void display_str(char *str);
+void Dtmf8870::setup (int number_timeout, Dtmf8870_handler handler) {
+  cli_number_timeout = (unsigned long)(number_timeout/1000);
+  this->handler = handler;
+
   pinMode(CLI_CLK, INPUT);
   pinMode(CLI_D0, INPUT);
   pinMode(CLI_D1, INPUT);
   pinMode(CLI_D2, INPUT);
   pinMode(CLI_D3, INPUT);
+
+  this->handler(DTMF_IDLE, '\0', "");
 }
 
-int cli_clk = 0;
-int cli_loaded = 0;
-int cli_value = 0;
-int cli_last_digit_time = 0;
 
-#define MAX_CLI_DIGITS 16
-
-char number[MAX_CLI_DIGITS +1] = "";
-byte number_ptr = 0;
-boolean number_valid = false;
-
-void display_str(char *str);
-
-void debug_numb(char *fmt, int a, int b, char c)
-{
-  char sbuf[512];
-  sprintf(sbuf, fmt, a, b, c);
-  display_str(sbuf);
-}
-
-char dtmf_xlat[17] = {'D', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*', '#', 'A', 'B', 'C'};
-
-void Dtmf8870_loop_read () {
-  static int clk_counter = 0;
-
+void Dtmf8870::loop () {
   int clk = digitalRead(CLI_CLK);
   int old_clk = cli_clk;
   cli_clk = clk;
 
-  if (clk && !old_clk) {
-    clk_counter ++;
-    if (clk_counter > 999)
-        clk_counter =0;
+  time_counter_ams ++;
+  if (time_counter_ams >= 1000) {
+    time_counter_ams = 0;
+    time_counter_s ++;
+    if (time_counter_s >= 3600) {
+      time_counter_s = 0;
+    }
+  }
 
-    cli_value = digitalRead(CLI_D0) |
+  if (clk && !old_clk) {
+    int cli_value = digitalRead(CLI_D0) |
       (digitalRead(CLI_D1) << 1) |
       (digitalRead(CLI_D2) << 2) |
       (digitalRead(CLI_D3) << 3);
 
-    debug_numb("%03d: %01d '%c'", clk_counter, cli_value, dtmf_xlat[cli_value]);
-
-    cli_last_digit_time = (int)(millis()/1000);
+    cli_last_digit_time = time_counter_s;
     if (number_ptr < MAX_CLI_DIGITS) {
+      handler(DTMF_TONE_READ, dtmf_xlat[cli_value], "");
       number_valid = true;
       number[number_ptr] = dtmf_xlat[cli_value];
       number[number_ptr+1] = '\0';
@@ -68,10 +68,21 @@ void Dtmf8870_loop_read () {
     }
   }
 
-  if (number_valid &&  (((int)(millis()/1000)) - cli_last_digit_time) > 2) {
-    display_str(number);
+  int delta = (time_counter_s - cli_last_digit_time);
+
+  if (number_valid && (delta > 2)) {
+    handler(DTMF_NUMBERS_LATCHED, '\0', number);
     number[0] = '\0';
     number_ptr = 0;
     number_valid = false;
+    handler(DTMF_IDLE, '\0', "");
   }
+}
+
+int Dtmf8870::counter_s() {
+  return time_counter_s;
+}
+
+int Dtmf8870::counter_ms() {
+  return time_counter_ams;
 }

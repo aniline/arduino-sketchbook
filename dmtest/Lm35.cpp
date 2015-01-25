@@ -35,7 +35,7 @@ void Lm35_readAccumulate (int readings, int _delay) {
   int acc_temp = 0;
   for (int i=0; i<readings; i++) {
     acc_temp += analogRead(0);
-    delay(_delay);
+    //delay(_delay);
   }
   float temperature_C = (acc_temp * 500.0) / (1023 * readings);
   Lm35_accumulateTemp (temperature_C);
@@ -45,8 +45,8 @@ int  Lm35_getTemp () {
   return round(avg_temp);
 }
 
-void Lm35_print(char *sbuf) {
+void Lm35_print(char *sbuf, int buflen) {
   int t_fraction = avg_temp % AVG_INT_SCALER;
   int t_whole = (avg_temp - t_fraction)/AVG_INT_SCALER;
-  sprintf(sbuf, "%3d.%01d C", t_whole, t_fraction);
+  snprintf(sbuf, buflen, "%3d.%01d C", t_whole, t_fraction);
 }

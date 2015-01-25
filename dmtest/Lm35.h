@@ -4,6 +4,6 @@
 void Lm35_setup ();
 void Lm35_readAccumulate (int readings, int _delay);
 int  Lm35_getTemp();
-void Lm35_print(char *sbuf);
+void Lm35_print(char *sbuf, int buflen);
 
 #endif
