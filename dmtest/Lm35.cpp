@@ -7,21 +7,17 @@
 int avg_temp = 0;
 int temperature_readings[NUM_AVG] = { };
 int new_temp_index = 0;
-boolean avg_window_ready = false;
 
 void Lm35_setup () {
+  analogReference(INTERNAL); /* Use internal 1.1v ref */
   for (int i=0; i<NUM_AVG; i++) {
-   temperature_readings[i] = 0.0f;
+    temperature_readings[i] = 0.0f;
   }
   new_temp_index = 0;
 }
 
 void Lm35_accumulateTemp (float t) {
   temperature_readings[new_temp_index] = round(t*AVG_INT_SCALER);
-
-  if ((new_temp_index + 1) > NUM_AVG)
-    avg_window_ready = true;
-
   new_temp_index = (new_temp_index + 1) % NUM_AVG;
 
   int _avg_temp = 0;
@@ -31,18 +27,21 @@ void Lm35_accumulateTemp (float t) {
   avg_temp = round(_avg_temp/NUM_AVG);
 }
 
+int acc_temp = 0;
+byte acc_counter = 0;
 void Lm35_readAccumulate (int readings, int _delay) {
-  int acc_temp = 0;
-  for (int i=0; i<readings; i++) {
-    acc_temp += analogRead(0);
-    //delay(_delay);
+  acc_temp += analogRead(0);
+  acc_counter ++;
+  if (acc_counter >= readings) {
+    float temperature_C = (acc_temp * 110.0) / (1023 * readings);
+    Lm35_accumulateTemp(temperature_C);
+    acc_temp = 0;
+    acc_counter = 0;
   }
-  float temperature_C = (acc_temp * 500.0) / (1023 * readings);
-  Lm35_accumulateTemp (temperature_C);
 }
 
 int  Lm35_getTemp () {
-  return round(avg_temp);
+  return avg_temp; /* ^C Multiplied by AVG_INT_SCALER */
 }
 
 void Lm35_print(char *sbuf, int buflen) {

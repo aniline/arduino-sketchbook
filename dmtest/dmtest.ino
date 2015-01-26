@@ -58,54 +58,81 @@ void display_str(char *str) {
   m.blit(buf, 0);
 }
 
+/* Screensaver of sorts */
+byte drift_pos = 0;
+char drift_dir = 1;
+void display_str_drifting(byte max_drift, char *str) {
+  scroller_active = false;
+  memset(buf, 0, NUM_COLS);
+  write_string(buf, NUM_COLS, str, drift_pos);
+  m.blit(buf, 0);
+
+  drift_pos += drift_dir;
+  if ((drift_pos >= max_drift) || (drift_pos <= 0)) {
+    drift_dir *= -1;
+  }
+}
+
 void display_str_scroller(char *str) {
   write_to_scroller(str);
   scroller_active = true;
 }
 
+/* Progress indicator */
+const byte pattern[32] PROGMEM = {
+  0x0c, 0x0e, 0x0c, 0x08, 0x10, 0x30, 0x70, 0x30,
+  0x00, 0x02, 0x07, 0x0f, 0xf0, 0xe0, 0x40, 0x00,
+  0x00, 0x40, 0xe0, 0xf0, 0x0f, 0x07, 0x02, 0x00,
+  0x30, 0x70, 0x30, 0x10, 0x08, 0x0c, 0x0e, 0x0c
+};
+
+int fan_pattern_index = 0;
+void fan_pattern() {
+   memcpy_P(buf+((NUM_MODULES-1)*8), pattern+(fan_pattern_index*8), 8);
+   fan_pattern_index = (fan_pattern_index + 1) % 4;
+   m.blit(buf, 0);
+}
+
 enum {
   DISP_CLI,
   DISP_TEMP,
-} 
-display_master = DISP_TEMP;
+} display_mode = DISP_TEMP;
 
 unsigned int t_counter = 0;
 void loop_Temperature () {
   Lm35_readAccumulate(8, 70);
-  if (display_master == DISP_TEMP) {
+  if (display_mode == DISP_TEMP) {
     int delta = d.counter_s() - t_counter;
     if (delta > 2) {
       char sbuf[16];
       Lm35_print(sbuf, 16);
-      display_str(sbuf);
+      display_str_drifting(10, sbuf);
       t_counter = d.counter_s();
     }
   }
 }
 
-
 int number_time = 0;
 void loop_Dtmf () {
   d.loop();
-  if ((display_master == DISP_CLI) && ((d.counter_s() - number_time) > 6)) {
-    display_master = DISP_TEMP;
+  if ((display_mode == DISP_CLI) && ((d.counter_s() - number_time) > 6)) {
+    display_mode = DISP_TEMP;
   }
 }
 
 void dtmf_handler(int state, char c, char * str) {
-  char sbuf[32];
+  char sbuf[17];
   switch (state) {
   case DTMF_IDLE:
     break;
   case DTMF_TONE_READ:
     number_time = d.counter_s();
-    display_master = DISP_CLI;
-    sprintf(sbuf, "TONE %c", c);
-    display_str(sbuf);
+    display_mode = DISP_CLI;
+    fan_pattern();
     break;
   case DTMF_NUMBERS_LATCHED:
     number_time = d.counter_s();
-    display_master = DISP_CLI;
+    display_mode = DISP_CLI;
     snprintf(sbuf, MAX_CLI_DIGITS, "%s", str);
     display_str_scroller(sbuf);
     break;
@@ -119,12 +146,11 @@ void setup () {
   setup_Font5x7();
 
   Lm35_setup();
-  d.setup(2000, dtmf_handler);
+  d.setup(1, dtmf_handler);
 
   memset(buf, 0, NUM_COLS);
   memset(big_buf, 0, (NUM_COLS*(BUF_PAGES+1)));
   m.blit(buf, 0);
-
   display_str("Starting");
 }
 
@@ -132,7 +158,7 @@ void loop () {
   loop_Dtmf();
   loop_Temperature();
   scroll(30);
-  delayMicroseconds(500);
+  delayMicroseconds(1000);
 }
 
 

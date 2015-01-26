@@ -25,7 +25,7 @@ Dtmf8870::Dtmf8870() {
 }
 
 void Dtmf8870::setup (int number_timeout, Dtmf8870_handler handler) {
-  cli_number_timeout = (unsigned long)(number_timeout/1000);
+  cli_number_timeout = number_timeout;
   this->handler = handler;
 
   pinMode(CLI_CLK, INPUT);
@@ -70,7 +70,7 @@ void Dtmf8870::loop () {
 
   int delta = (time_counter_s - cli_last_digit_time);
 
-  if (number_valid && (delta > 2)) {
+  if (number_valid && (delta > cli_number_timeout)) {
     handler(DTMF_NUMBERS_LATCHED, '\0', number);
     number[0] = '\0';
     number_ptr = 0;
