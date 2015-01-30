@@ -98,25 +98,31 @@ enum {
   DISP_TEMP,
 } display_mode = DISP_TEMP;
 
-unsigned int t_counter = 0;
+byte t_counter = 0;
 void loop_Temperature () {
   Lm35_readAccumulate(8, 70);
   if (display_mode == DISP_TEMP) {
-    int delta = d.counter_s() - t_counter;
-    if (delta > 2) {
+    if (d.second_ticked()) {
+      t_counter ++;
+    }
+    if (t_counter > 2) {
       char sbuf[16];
       Lm35_print(sbuf, 16);
       display_str_drifting(10, sbuf);
-      t_counter = d.counter_s();
+      t_counter = 0;
     }
   }
 }
 
-int number_time = 0;
+byte number_time = 0;
 void loop_Dtmf () {
   d.loop();
-  if ((display_mode == DISP_CLI) && ((d.counter_s() - number_time) > 6)) {
-    display_mode = DISP_TEMP;
+  if (display_mode == DISP_CLI) {
+    if (d.second_ticked()) number_time++;
+    if (number_time > 6) {
+      number_time = 0;
+      display_mode = DISP_TEMP;
+    }
   }
 }
 
@@ -126,12 +132,12 @@ void dtmf_handler(int state, char c, char * str) {
   case DTMF_IDLE:
     break;
   case DTMF_TONE_READ:
-    number_time = d.counter_s();
+    number_time = 0;
     display_mode = DISP_CLI;
     fan_pattern();
     break;
   case DTMF_NUMBERS_LATCHED:
-    number_time = d.counter_s();
+    number_time = 0;
     display_mode = DISP_CLI;
     snprintf(sbuf, MAX_CLI_DIGITS, "%s", str);
     display_str_scroller(sbuf);
@@ -144,14 +150,12 @@ void dtmf_handler(int state, char c, char * str) {
 void setup () {
   m.init();
   setup_Font5x7();
-
   Lm35_setup();
   d.setup(1, dtmf_handler);
 
   memset(buf, 0, NUM_COLS);
   memset(big_buf, 0, (NUM_COLS*(BUF_PAGES+1)));
   m.blit(buf, 0);
-  display_str("Starting");
 }
 
 void loop () {

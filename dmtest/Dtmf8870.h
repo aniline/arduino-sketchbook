@@ -23,14 +23,16 @@ private:
   char number[MAX_CLI_DIGITS +1];
   byte number_ptr;
   boolean number_valid;
-  
-public: 
+
+public:
   Dtmf8870();
   void setup (int number_timeout, Dtmf8870_handler handler);
   void loop ();
-  
+
   int counter_ms();
   int counter_s();
+
+  byte second_ticked();
 };
 
 #endif
