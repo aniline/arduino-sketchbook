@@ -1,6 +1,6 @@
 #include <Arduino.h>
+#include <Ds1307Rtc.h>
 #include <Wire.h>
-#include "ds1307.h"
 
 Ds1307Rtc rtc;
 

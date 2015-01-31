@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include "ds1307.h"
+#include "Ds1307Rtc.h"
 
 byte Ds1307Rtc::getDate() {
   byte v;
