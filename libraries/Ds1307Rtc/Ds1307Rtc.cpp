@@ -2,6 +2,10 @@
 #include <Wire.h>
 #include "Ds1307Rtc.h"
 
+void Ds1307Rtc::setup () {
+     Wire.begin();
+}
+
 byte Ds1307Rtc::getDate() {
   byte v;
 

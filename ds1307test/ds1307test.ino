@@ -12,7 +12,7 @@ void Serial_info_byte(char *msg, byte v) {
 
 void setup()
 {
-  Wire.begin();
+  rtc.setup();
   Serial.begin(9600);
 
   if (!rtc.isRunning()) {

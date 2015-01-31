@@ -1,6 +1,10 @@
 // -*- mode: c++ -*-
 
+#include <Arduino.h>
+#include <Ds1307Rtc.h>
 #include <SPI.h>
+#include <Wire.h>
+
 #include "Max7219.h"
 #include "Dtmf8870.h"
 #include "Lm35.h"
@@ -88,15 +92,19 @@ const byte pattern[32] PROGMEM = {
 
 int fan_pattern_index = 0;
 void fan_pattern() {
-   memcpy_P(buf+((NUM_MODULES-1)*8), pattern+(fan_pattern_index*8), 8);
-   fan_pattern_index = (fan_pattern_index + 1) % 4;
-   m.blit(buf, 0);
+  memcpy_P(buf+((NUM_MODULES-1)*8), pattern+(fan_pattern_index*8), 8);
+  fan_pattern_index = (fan_pattern_index + 1) % 4;
+  m.blit(buf, 0);
 }
 
 enum {
   DISP_CLI,
   DISP_TEMP,
-} display_mode = DISP_TEMP;
+  DISP_CLOCK,
+}
+display_mode = DISP_TEMP;
+
+Ds1307Rtc rtc;
 
 byte t_counter = 0;
 void loop_Temperature () {
@@ -106,9 +114,17 @@ void loop_Temperature () {
       t_counter ++;
     }
     if (t_counter > 2) {
-      char sbuf[16];
-      Lm35_print(sbuf, 16);
-      display_str_drifting(10, sbuf);
+      char tbuf[8], cbuf[8], sbuf[16];
+      byte rc = rtc.getTime();
+      Lm35_print(tbuf, 8);
+      if (rc == 0) {
+        snprintf(cbuf, 8, "%2d:%02d%1c ", rtc.hour, rtc.minutes, rtc.am_pm ? 'p' : ' ');
+        strncpy(sbuf, cbuf, 8);
+        strncat(sbuf, tbuf, 7);
+      } else {
+        strncpy(sbuf, tbuf, 8);
+      }
+      display_str_drifting(4, sbuf);
       t_counter = 0;
     }
   }
@@ -151,6 +167,7 @@ void setup () {
   m.init();
   setup_Font5x7();
   Lm35_setup();
+  rtc.setup();
   d.setup(1, dtmf_handler);
 
   memset(buf, 0, NUM_COLS);
@@ -164,7 +181,4 @@ void loop () {
   scroll(30);
   delayMicroseconds(1000);
 }
-
-
-
 

@@ -26,6 +26,8 @@ public:
   byte month;
   unsigned int year;
 
+  void setup();
+
   byte getDate();
   byte getTime();
 

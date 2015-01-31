@@ -47,5 +47,5 @@ int  Lm35_getTemp () {
 void Lm35_print(char *sbuf, int buflen) {
   int t_fraction = avg_temp % AVG_INT_SCALER;
   int t_whole = (avg_temp - t_fraction)/AVG_INT_SCALER;
-  snprintf(sbuf, buflen, "%3d.%01d C", t_whole, t_fraction);
+  snprintf(sbuf, buflen, "%3d.%01dc", t_whole, t_fraction);
 }
