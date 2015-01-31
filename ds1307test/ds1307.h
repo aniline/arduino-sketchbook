@@ -1,5 +1,5 @@
-#ifndef _DS1307_H
-#define _DS1307_H
+#ifndef _DS1307RTC_H
+#define _DS1307RTC_H
 
 #define DS1307_I2C 0x68
 
@@ -14,28 +14,30 @@
 
 #define DS1307_YearOffset   2000
 
-typedef struct {
+class Ds1307Rtc {
+public:
   byte seconds;
   byte minutes;
   byte hour;
   byte hour24;
   byte am_pm;
-} DS1307_Time;
-
-typedef struct {
   byte day;
   byte day_of_week;
   byte month;
   unsigned int year;
-} DS1307_Date;
 
-byte DS1307_read(byte reg);
-byte DS1307_write(byte reg, byte val);
-byte DS1307_getDate(DS1307_Date *d);
-byte DS1307_getTime(DS1307_Time *t);
+  byte getDate();
+  byte getTime();
 
-void DS1307_setDate(int year, byte month, byte day);
-void DS1307_setTime(int hour24, byte minutes, byte seconds);
-void DS1307_setDayOfWeek(byte dow);
+  void setDate(int year, byte month, byte day);
+  void setTime(int hour24, byte minutes, byte seconds);
+  void setDayOfWeek(byte dow);
+
+  byte read(byte reg);
+  byte write(byte reg, byte val);
+
+  byte isRunning();
+};
+
 
 #endif

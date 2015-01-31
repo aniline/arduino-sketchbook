@@ -1,22 +1,21 @@
-#include "arduino.h"
+#include <Arduino.h>
+#include <Wire.h>
 #include "ds1307.h"
-#include "Wire.h"
 
-byte DS1307_getDate(DS1307_Date *d) {
-  if (!d) return -1;
+byte Ds1307Rtc::getDate() {
   byte v;
 
-  v = DS1307_read(DS1307_regDate);
-  d->day = 10 * ((v & 0x30) >> 4) + (v & 0xF);
+  v = read(DS1307_regDate);
+  day = 10 * ((v & 0x30) >> 4) + (v & 0xF);
 
-  v = DS1307_read(DS1307_regMonth);
-  d->month = 10 * ((v & 0x10) >> 4) + (v & 0xF);
+  v = read(DS1307_regMonth);
+  month = 10 * ((v & 0x10) >> 4) + (v & 0xF);
 
-  v = DS1307_read(DS1307_regYear);
-  d->year = DS1307_YearOffset + (10 * ((v & 0xF0) >> 4) + (v & 0xF));
+  v = read(DS1307_regYear);
+  year = DS1307_YearOffset + (10 * ((v & 0xF0) >> 4) + (v & 0xF));
 
-  v = DS1307_read(DS1307_regDay);
-  d->day_of_week = v & 0x7;
+  v = read(DS1307_regDay);
+  day_of_week = v & 0x7;
 
   return 0;
 }
@@ -25,58 +24,57 @@ byte toBCD (byte v) {
   return ((v / 10) << 4) | (v % 10);
 }
 
-byte DS1307_getTime(DS1307_Time *t) {
-  if (!t) return -1;
-
+byte Ds1307Rtc::getTime() {
   byte v;
-  v = DS1307_read(DS1307_regSecond);
 
-  if (v & 0x80)
-    return -1;
+  v = read(DS1307_regSecond);
 
-  t->seconds = 10 * ((v & 0x70) >> 4) + (v & 0xF);
+  if ((v & 0x80) != 0)
+    return 1;
 
-  v = DS1307_read(DS1307_regMinute);
-  t->minutes = 10 * ((v & 0x70) >> 4) + (v & 0xF);
+  seconds = 10 * ((v & 0x70) >> 4) + (v & 0xF);
 
-  v = DS1307_read(DS1307_regHour);
+  v = read(DS1307_regMinute);
+  minutes = 10 * ((v & 0x70) >> 4) + (v & 0xF);
+
+  v = read(DS1307_regHour);
 
   if (v & 0x40) { /* 12 Hour mode */
-    t->hour = 10 * ((v & 0x10) >> 4) + (v & 0xF);
-    t->am_pm = (v & 0x20) ? 1 : 0;
-    if (t->hour != 12) {
-      t->hour24 = (t->am_pm) ? (t->hour + 12) : (t->hour);
+    hour = 10 * ((v & 0x10) >> 4) + (v & 0xF);
+    am_pm = (v & 0x20) ? 1 : 0;
+    if (hour != 12) {
+      hour24 = (am_pm) ? (hour + 12) : (hour);
     } else {
-      t->hour24 = (t->am_pm) ? t->hour : 0;
+      hour24 = (am_pm) ? hour : 0;
     }
   } else {
-    t->hour24 = (10 * ((v & 0x30) >> 4)) + (v & 0xF);
-    t->am_pm = (t->hour24 >= 12) ? 1 : 0;
-    t->hour = (t->am_pm) ? (t->hour24 - 12) : t->hour24;
-    if (t->hour == 0)
-      t->hour = 12;
+    hour24 = (10 * ((v & 0x30) >> 4)) + (v & 0xF);
+    am_pm = (hour24 >= 12) ? 1 : 0;
+    hour = (am_pm) ? (hour24 - 12) : hour24;
+    if (hour == 0)
+      hour = 12;
   }
 
   return 0;
 }
 
-void DS1307_setDate(int year, byte month, byte day) {
-  DS1307_write(DS1307_regDate, toBCD(day));
-  DS1307_write(DS1307_regMonth, toBCD(month));
-  DS1307_write(DS1307_regYear, toBCD(year % 100));
+void Ds1307Rtc::setDate(int year, byte month, byte day) {
+  write(DS1307_regDate, toBCD(day));
+  write(DS1307_regMonth, toBCD(month));
+  write(DS1307_regYear, toBCD(year % 100));
 }
 
-void DS1307_setTime(int hour24, byte minutes, byte seconds) {
-  DS1307_write(DS1307_regHour, toBCD(hour24)); /* Set 24 Hour */
-  DS1307_write(DS1307_regMinute, toBCD(minutes));
-  DS1307_write(DS1307_regSecond, toBCD(seconds)); /* Clear CH bit also */
+void Ds1307Rtc::setTime(int hour24, byte minutes, byte seconds) {
+  write(DS1307_regHour, toBCD(hour24)); /* Set 24 Hour */
+  write(DS1307_regMinute, toBCD(minutes));
+  write(DS1307_regSecond, toBCD(seconds)); /* Clear CH bit also */
 }
 
-void DS1307_setDayOfWeek(byte dow) {
-  DS1307_write(DS1307_regDay, dow & 0x7);
+void Ds1307Rtc::setDayOfWeek(byte dow) {
+  write(DS1307_regDay, dow & 0x7);
 }
 
-byte DS1307_read(byte reg) {
+byte Ds1307Rtc::read(byte reg) {
     byte reg_val;
 
     Wire.beginTransmission(DS1307_I2C);
@@ -90,9 +88,16 @@ byte DS1307_read(byte reg) {
     return reg_val;
 }
 
-byte DS1307_write(byte reg, byte val) {
+byte Ds1307Rtc::write(byte reg, byte val) {
     Wire.beginTransmission(DS1307_I2C);
     Wire.write(reg);
     Wire.write(val);
     Wire.endTransmission();
+}
+void Serial_info_byte(char *msg, byte v);
+
+byte Ds1307Rtc::isRunning() {
+    byte v;
+    Serial_info_byte("regSecond ", v);
+    return (v & 0x80) == 0;
 }
