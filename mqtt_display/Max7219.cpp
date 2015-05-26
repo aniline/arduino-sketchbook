@@ -8,8 +8,8 @@ Max7219::Max7219(byte v_cascade_num)
 
 /* Bit bang pins */
 #define BANG_CLK  4
-#define BANG_DATA 3
-#define BANG_CS   2
+#define BANG_CS   3
+#define BANG_DATA 2
 
 void _SPI_Transfer(byte val) {
      digitalWrite(BANG_CLK, LOW);
