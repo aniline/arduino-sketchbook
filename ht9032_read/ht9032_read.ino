@@ -1,5 +1,6 @@
 // -*- mode: c++ -*-
 #include <Arduino.h>
+#include <util/delay.h>
 
 int serial_putc( char c, FILE * )
 {
@@ -101,6 +102,7 @@ Error:
   return false;
 }
 
+/* The first ring check logic runs right over the siezure bits, so its kinda pointless */
 void doSeizure() {
   byte v, oldv = 0x4;
   byte bits = 0;
@@ -181,10 +183,6 @@ void getClip () {
   delay(200);
   while (!(PIND & 0x4));
 
-  //   if (len < 0x10) {
-  //    len |= 0x10;
-  // }
-
   printf("Len = %d\r\n", len);
   dump_hex("Stuff", buf, len);
   if (parse_cnd_msg(buf, len, &msg)) {
@@ -206,32 +204,32 @@ void waitForFirstRing() {
     PORTB &= 0xFE;
     while (!(PIND & _BV(PD3)));
     PORTB |= 1;
-    printf_P(PSTR("Ring Up\r\n"));
+
+    /* At some point between 15-20 uS, the PIND check jumps over and messes with the 'states'
+     * Using _delay_us, for porting to non-arduino AVR code. */
+    _delay_us(20);
 
     while (PIND & _BV(PD3));
     PORTB &= 0xFE;
-    printf_P(PSTR("Ring Down\r\n"));
 
-    delay(300);
+    _delay_ms(300);
 
     PORTB |= 1;
-    Serial.println(PIND & _BV(PD3));
     if (PIND & _BV(PD3)) {
       while (PIND & _BV(PD3));
-      printf_P(PSTR("Is not first\r\n"));
       isFirst = false;
       PORTB &= 0xFE;
-      delay(1);
+      _delay_ms(1);
     }
     else {
       if ((millis() - last_call_first_ring) > 3000) {
-        printf_P(PSTR("First Ring\r\n"));
+        _delay_us(20);
         last_call_first_ring = millis();
         PORTB &= 0xFE;
         isFirst = true;
       }
       else {
-        printf_P(PSTR("Second Ring\r\n"));
+        _delay_us(20);
         PORTB &= 0xFE;
       }
     }
@@ -241,7 +239,7 @@ void waitForFirstRing() {
 void loop ()
 {
   waitForFirstRing();
-  //     doSeizure();
   getClip();
+  //delay(800); // For testing ring.
 }
 
