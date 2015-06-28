@@ -183,15 +183,21 @@ void getClip () {
   delay(200);
   while (!(PIND & 0x4));
 
+#ifdef DEBUG
   printf("Len = %d\r\n", len);
   dump_hex("Stuff", buf, len);
+#endif
   if (parse_cnd_msg(buf, len, &msg)) {
+    printf_P(PSTR("++0,%d,%d,%d,%d,%s--"), msg.month, msg.day, msg.hour, msg.minute, msg.number);
+#ifdef DEBUG
     printf_P(PSTR("Timestamp = %02d - %02d : %02d:%02d hours\r\n"), msg.month, msg.day, msg.hour, msg.minute);
     printf_P(PSTR("Calling line number = %s\r\n"), msg.number);
     printf_P(PSTR("Tag = %02x, Checksum = %02x, Len = %02x\r\n"), msg.tag, msg.cksum, msg.len);
+#endif
   }
   else {
     printf_P(PSTR("Parse failed (Len = %d)\r\n"), len);
+    printf_P(PSTR("++1,Parse failed--"));
   }
 }
 
