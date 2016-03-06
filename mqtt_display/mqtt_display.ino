@@ -2,9 +2,10 @@
 
 #include <Arduino.h>
 #include <SPI.h>
-#include "printf.h"
 #include "Max7219.h"
 #include "Font5x7.h"
+
+// #define TEST
 
 #define NUM_MODULES 6
 #define NUM_COLS (NUM_MODULES * 8)
@@ -19,12 +20,14 @@ boolean scroller_active = false;
 int pan_ticker = 0;
 int pan_pos = 0;
 
+/* Render to the bigger back buffer */
 void write_to_scroller (char *str) {
   memset(big_buf, 0, NUM_COLS * (BUF_PAGES+1));
   int test_cols = write_string(big_buf, NUM_COLS*BUF_PAGES, str, 0);
   memcpy(big_buf+(NUM_COLS*BUF_PAGES), big_buf, NUM_COLS);
 }
 
+/* Blit portion of the back buffer */
 void pan(int pan_dir) {
   m.blit(big_buf, pan_pos);
   pan_pos += 1;
@@ -32,9 +35,13 @@ void pan(int pan_dir) {
     pan_pos = 0;
 }
 
+/* Pan by one column of dots when the ticker 
+ * crosses _delay * 10 milliseconds */
 void scroll(int _delay) {
   if (scroller_active) {
-    pan_ticker ++;
+    if (0 == (millis() % 10)) {
+      pan_ticker ++;
+    }
     if (pan_ticker >= _delay) {
       pan_ticker = 0;
       pan(1);
@@ -42,12 +49,14 @@ void scroll(int _delay) {
   }
 }
 
+/* Clear the display */
 void clear () {
   for (int i = 0; i<8; i++) {
     m.setcol(i, 0);
   }
 }
 
+/* Display ...  string ?  */
 void display_str(char *str) {
   scroller_active = false;
   memset(buf, 0, NUM_COLS);
@@ -55,13 +64,42 @@ void display_str(char *str) {
   m.blit(buf, 0);
 }
 
-/* Screensaver of sorts */
+/* Screensaver of sorts, for messages like 'clocks' */
 byte drift_pos = 0;
 char drift_dir = 1;
+
+/* A guessed width of clock; should use the write_string
+ * return value to calculate this */
+byte max_drift = 20; 
+
+boolean drift_active = false;
+char *drift_str_ptr = NULL;
+
 void display_str_drifting(byte max_drift, char *str) {
-  scroller_active = false;
+  scroller_active = false; /* You are out */
+  drift_active = true; /* They are in */
+  if (str != NULL) {
+    drift_str_ptr = str;
+  }
+}
+
+int drift_ticker = 0;
+
+void drift(int _delay) {
+  if (!drift_active) return;
+  if (drift_str_ptr == NULL) return;
+
+  if (millis() % 1000 == 0) {
+    drift_ticker ++;
+  }
+
+  if (drift_ticker < _delay) {
+    return;
+  }
+  drift_ticker = 0;
+
   memset(buf, 0, NUM_COLS);
-  write_string(buf, NUM_COLS, str, drift_pos);
+  write_string(buf, NUM_COLS, drift_str_ptr, drift_pos);
   m.blit(buf, 0);
 
   drift_pos += drift_dir;
@@ -73,6 +111,7 @@ void display_str_drifting(byte max_drift, char *str) {
 void display_str_scroller(char *str) {
   write_to_scroller(str);
   scroller_active = true;
+  drift_active = false;
 }
 
 /* Slave mode for clocking by ESP module */
@@ -193,20 +232,29 @@ void setup () {
   m.blit(buf, 0);
 
   Serial.begin(115200);
-  printf_begin();
-
   SPI_Slave_Begin();
+
+#ifdef TEST
+  esp_data.new_val = true;
+  esp_data.option = DISP_DRIFT;
+  esp_data.timeout = 10;
+  memset(esp_data.msg, 0, MAX_MSG);
+  strcpy(esp_data.msg, "Testing");
+#endif
 }
 
 unsigned long _millis = 0;
 
 void loop () {
+#ifndef TEST
   collectESPData();
+#endif
   if (esp_data.new_val) {
-    printf("Vald = %d, Opt = %d, Timeout = %d, Msg = %s\r\n",
-      esp_data.valid, esp_data.option, esp_data.timeout, esp_data.msg);
+    esp_data.new_val = false;
     if (esp_data.option == DISP_SCROLL)
 	 display_str_scroller(esp_data.msg);
+    else if (esp_data.option == DISP_DRIFT)
+         display_str_drifting(40, esp_data.msg);
     else
 	 display_str(esp_data.msg);
     _millis = millis();
@@ -214,6 +262,8 @@ void loop () {
   if ((esp_data.timeout != 0) && ((millis() - _millis) > (esp_data.timeout * 1000))) {
        display_str("");
        esp_data.timeout = 0;
+       scroller_active = drift_active = false;
   }
-  scroll(200);
+  scroll(70);
+  drift(1);
 }
